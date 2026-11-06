@@ -1,13 +1,13 @@
-# 平台数据验证
+# Platform Data Validation
 
-本目录有两个可单独执行的脚本，不修改业务代码。所有路径参数均相对于当前工作目录。
+This directory contains two standalone scripts that do not modify the application code. All path arguments are relative to the current working directory.
 
-- `validate_conversion.py`：调用现有格式转换核心函数，或者读取平台已经下载的输出；对 CSV、XLS、XLSX、JSON 按行列逐单元格精确比较。
-- `validate_statistics.py`：使用 pandas、NumPy、SciPy 独立重算 PSPV / PTDV 汇总指标；与面板导出 CSV、保存的回调 JSON，或者实时 Dash 汇总回调结果比较。独立计算不导入平台统计函数。
+- `validate_conversion.py`: Calls the existing conversion core functions or reads outputs already downloaded from the platform. It compares CSV, XLS, XLSX, and JSON cell by cell in row and column order.
+- `validate_statistics.py`: Uses pandas, NumPy, and SciPy to independently recompute PSPV / PTDV summary metrics. It compares the results with a CSV exported from the panel, a saved callback JSON response, or a live Dash summary callback result. The independent calculations do not import the platform's statistics functions.
 
-## 安装
+## Installation
 
-在项目根目录创建独立环境，避免改变平台运行环境：
+Create an isolated environment in the project root so the platform runtime environment is not changed:
 
 ```bash
 cd /Users/zyl/code/DataProcessing_20250723
@@ -16,28 +16,28 @@ source tests/.venv/bin/activate
 python -m pip install -r tests/requirements.txt
 ```
 
-脚本使用 Python 3.8+ 语法，依赖包由 pip 按 Python 版本选择。独立统计计算兼容新版 pandas，不依赖已经移除的 `DataFrame.mad()`。平台本身仍使用旧版 API，脚本不会替平台修正兼容性错误。
+The scripts use Python 3.8+ syntax. pip selects dependencies according to the Python version. The independent statistics calculations are compatible with newer pandas versions and do not rely on the removed `DataFrame.mad()`. The platform itself still uses older APIs; the scripts do not fix compatibility errors in the platform.
 
-## 1. 格式转换验证
+## 1. Format Conversion Validation
 
-运行随附的同一张数据表到四种输出格式的测试：
+Run the included test that converts the same data table into all four output formats:
 
 ```bash
 python tests/validate_conversion.py --output-dir tests/results/conversion
 ```
 
-测试自定义表格：
+Test a custom table:
 
 ```bash
 python tests/validate_conversion.py --input /path/to/original.xlsx \
   --output-dir tests/results/my_conversion
 ```
 
-默认输入为 `fixtures/conversion_input.json`，包含中文、小数、负数、空字符串、数字文本、长整数文本、`NA`、逗号引号和单元格内换行。输入支持 `.csv/.xls/.xlsx/.json`，JSON 必须为二维数组；表头也属于待比较单元格。
+The default input is `fixtures/conversion_input.json`. It contains Chinese text, decimals, negative numbers, empty strings, numeric text, long-integer text, `NA`, quoted commas, and embedded newlines. Input supports `.csv/.xls/.xlsx/.json`; JSON must be a two-dimensional array. Header cells are also compared.
 
-本地模式从 `pages/DataFormatConvert/DataFormatConvert.py` 解析并执行八个现有 import/export 函数；不复制转换实现、不导入整个 Dash 应用，也不启动服务器。它验证转换核心，不能证明上传、路由或下载界面已通过测试。
+Local mode parses and executes the eight existing import/export functions from `pages/DataFormatConvert/DataFormatConvert.py`. It does not copy the conversion implementation, import the entire Dash application, or start a server. It validates the conversion core; it does not prove that the upload, routing, or download UI has been tested.
 
-验证平台实际下载文件时，在格式转换页面上传原始表，分别导出四种格式，将它们放到同一个目录：
+To validate files actually downloaded from the platform, upload the original table on the format conversion page and export all four formats into the same directory:
 
 ```text
 /path/to/downloads/
@@ -52,35 +52,35 @@ python tests/validate_conversion.py --input /path/to/original.xlsx \
   --converted-dir /path/to/downloads --output-dir tests/results/downloaded_conversion
 ```
 
-文件名必须为 `<输入文件名去扩展名>_convert.<格式>`。该模式不重新转换，全部四种输出都必须存在。
+File names must be `<input basename without extension>_convert.<format>`. This mode does not convert again; all four outputs must be present.
 
-比较规则：
+Comparison rules:
 
-- 不使用数值误差容限，数值必须精确相等；Excel 读取出的 `2.0` 与输入数值 `2` 视为同一数值。
-- CSV 没有单元格类型，因此将原数值按 `str()` 转成文本后逐字比较；`00123` 这样的原始文本保留原样，不转成数字。
-- `None`、空字符串、`NA`、数值与数字文本严格区分；不会为了让结果通过而统一空值或强制转数值。
-- 保留行列顺序，比较形状；不验证字体、样式、多工作表或公式计算结果。XLS 读取首表，XLSX 读取活动表。
+- No numeric tolerance is used; numeric values must be exactly equal. An Excel-read `2.0` and an input numeric value of `2` are treated as the same number.
+- CSV has no cell types, so original numeric values are converted to text with `str()` and compared character by character. Original text such as `00123` is preserved and is not converted to a number.
+- `None`, empty strings, `NA`, numbers, and numeric text are strictly distinguished. Nulls are not unified and values are not forced to numeric just to make the result pass.
+- Row and column order are preserved, and the shape is compared. Fonts, styles, multiple worksheets, and formula results are not validated. XLS reads the first sheet; XLSX reads the active sheet.
 
-**转换不做数值运算，并不保证跨格式完全无损。**Excel 可能把空字符串读回为空单元格，CSV 不能表达类型化的 null，浮点数和大整数也受格式表示能力限制。默认样例包含空字符串，因此 XLSX 当前会如实报出 `"" → None`。这代表检出了差异，不应改大容差掩盖。生产 XLSX 导入还会把文字 `NA` 改成 `None`，用 XLSX 原始输入也可以检出。
+**Conversion does not perform numeric calculations, and it is not guaranteed to be lossless across formats.** Excel may read an empty string back as an empty cell, CSV cannot represent typed nulls, and floating-point numbers and large integers are limited by the representation capabilities of each format. The default sample contains an empty string, so XLSX currently reports `"" → None` as a real difference. This is a detected difference and should not be hidden by widening the tolerance. Production XLSX import also changes the text `NA` to `None`; an original XLSX input can detect this as well.
 
-因此，默认样例的**预期结果是 CSV/XLS/JSON 通过、XLSX 失败，脚本退出码为 1**；这不是脚本异常，而是格式转换的已知损失。加入 `--edge-cases` 后会检出更多 null/空白/尾空行差异。若目标是“四种格式都必须完全一致”，当前实现无法通过这些用例；应将它作为测试门禁，而不是放宽比较规则。
+Therefore, the **expected result for the default sample is CSV/XLS/JSON pass, XLSX fail, and the script exits with code 1**. This is not a script error; it is a known loss in format conversion. Adding `--edge-cases` detects more null, blank, and trailing-empty-row differences. If the goal is "all four formats must be completely identical," the current implementation cannot pass these cases; use this as a test gate rather than loosening the comparison rules.
 
-追加边界情况：
+Append edge cases:
 
 ```bash
 python tests/validate_conversion.py --edge-cases --diff-limit 20 \
   --output-dir tests/results/conversion_edges
 ```
 
-此模式还生成 `edge_input.json`，包含 null、空白及尾空行；预期会揭示更多格式损失。`report.json` 保存各格式的形状、差异总数和前 N 个差异，位置从 1 开始。默认输出目录为临时目录；建议显式指定 `--output-dir`。
+This mode also generates `edge_input.json`, which contains nulls, blanks, and trailing blank rows; it is expected to reveal more format loss. `report.json` stores the shape, total number of differences, and the first N differences for each format, with positions starting at 1. The default output directory is a temporary directory; specifying `--output-dir` explicitly is recommended.
 
-## 2. 统计量验证
+## 2. Statistics Validation
 
-### 准备真实界面数据
+### Preparing Real UI Data
 
-1. 在 PSPV 或 PTDV 的 Data upload 页面导出上传数据表，另存为 `input.csv`。
-2. 进入同一模块的 Data Summary，勾选全部统计量，记录 Digits 和 tidy 配置；改变一次勾选或位数，确保表格已使用当前上传数据重新计算。
-3. 导出汇总表，另存为 `summary.csv`。两个页面默认下载名都可能是 `Data.csv`，应分别重命名。
+1. On the PSPV or PTDV Data upload page, export the uploaded data table and save it as `input.csv`.
+2. Go to Data Summary in the same module, select all metrics, and record the Digits and tidy settings. Change a selection or the number of digits once to ensure the table has been recalculated with the currently uploaded data.
+3. Export the summary table and save it as `summary.csv`. Both pages may use `Data.csv` as the default download name, so rename the files separately.
 
 ```bash
 python tests/validate_statistics.py --module PSPV \
@@ -92,20 +92,20 @@ python tests/validate_statistics.py --module PTDV \
   --report tests/results/ptdv_real.json
 ```
 
-也可以对本地已启动的平台直接请求产生界面表格的 Dash 回调：
+You can also request the Dash callback that produces the UI table directly from a locally running platform:
 
 ```bash
 python tests/validate_statistics.py --module PSPV \
   --input /path/to/input.csv --base-url http://127.0.0.1:8050 --digits 8
 ```
 
-实时模式将输入 CSV 内容发送到指定平台，请求全部指标。它取得的是汇总回调返回的表格值，不读取现有浏览器 session，也不验证浏览器渲染。平台需要可直接访问且兼容当前项目的 Dash 回调 ID。若有登录层，可改用浏览器导出的 CSV 或保存的 `/_dash-update-component` JSON 响应。JSON 支持整个 Dash response、`{columns,data}` 或 records 列表；有 `columns` 时只核对实际显示列。
+Live mode sends the contents of the input CSV to the specified platform and requests all metrics. It obtains the table values returned by the summary callback; it does not read an existing browser session or validate browser rendering. The platform must be directly reachable and compatible with the Dash callback IDs in the current project. If there is a login layer, use a CSV exported from the browser or a saved `/_dash-update-component` JSON response instead. JSON supports the entire Dash response, `{columns,data}`, or a list of records; when `columns` is present, only the columns actually displayed are checked.
 
-默认必须覆盖全部 10 项指标和 `n`。只核对当前勾选列时加入 `--allow-partial`，报告会明确标为 `coverage=partial`，不能视为全量验证通过。
+By default, all 10 metrics and `n` must be covered. To check only the currently selected columns, add `--allow-partial`; the report will be explicitly marked `coverage=partial` and cannot be considered a full validation pass.
 
-### tidy 数据
+### tidy Data
 
-四个参数必须一起提供，填写界面中的真实选择：
+All four parameters must be provided together and must match the actual selections in the UI:
 
 ```bash
 python tests/validate_statistics.py --module PTDV \
@@ -113,36 +113,36 @@ python tests/validate_statistics.py --module PTDV \
   --tidy-x Time --tidy-y Value --tidy-ids Sample --tidy-idc id --digits 2
 ```
 
-PSPV 示例配置为 `--tidy-x Level --tidy-y Concentration --tidy-ids frame --tidy-idc conditions`。
+The PSPV example configuration is `--tidy-x Level --tidy-y Concentration --tidy-ids frame --tidy-idc conditions`.
 
-数据准备遵循当前面板行为：
+Data preparation follows the current panel behavior:
 
-- PSPV：wide 按数值列汇总。tidy 先按 x 和“条件 × 样本”透视，同一组合重复记录先求均值，再按透视后的每个数值列汇总。
-- PTDV：CSV 首列作为索引，按每个时间点跨全部样本列汇总。tidy 透视后，同一时间点的不同条件和样本一起参与统计，不分别按条件汇总。
-- 缺失值逐统计对象删除，不补零，不做归一化。PTDV 混入非数值样本列或出现无穷值时直接报告输入错误，不偷偷删除它们。
+- PSPV: wide data is summarized by numeric columns. For tidy data, pivot first by x and "condition × sample"; duplicate records for the same combination are averaged first, then each pivoted numeric column is summarized.
+- PTDV: the first CSV column is used as the index, and data is summarized across all sample columns at each time point. After the tidy pivot, different conditions and samples at the same time point participate in the statistics together rather than being summarized separately by condition.
+- Missing values are removed per statistical object; they are not filled with zero and no normalization is performed. If PTDV contains non-numeric sample columns or infinite values, an input error is reported directly rather than silently dropping them.
 
-### 指标和容差
+### Metrics and Tolerance
 
-| 指标 | 独立计算定义 |
+| Metric | Independent calculation definition |
 | --- | --- |
-| n | 非缺失观测数，精确比较 |
-| mean | 算术平均数 |
-| sd | 样本标准差，`ddof=1` |
+| n | Number of non-missing observations; exact comparison |
+| mean | Arithmetic mean |
+| sd | Sample standard deviation, `ddof=1` |
 | sem | `sd / sqrt(n)` |
 | 95CI mean | `mean ± t(0.975,n−1) × sem` |
-| median | 中位数 |
-| MAD | `mean(abs(x − mean))`，即平均绝对偏差，**不是中位数绝对偏差** |
-| Q1 / Q3 | 25% / 75% 分位数，线性插值 |
+| median | Median |
+| MAD | `mean(abs(x − mean))`, i.e. mean absolute deviation, **not median absolute deviation** |
+| Q1 / Q3 | 25% / 75% quantiles, linear interpolation |
 | IQR | Q3 − Q1 |
-| 95CI median | 按当前平台实现：`median ± t(0.975,n−1) × sem` |
+| 95CI median | Per the current platform implementation: `median ± t(0.975,n−1) × sem` |
 
-`95CI median` 验证的是平台当前公式；这不等同于证明该区间是标准的中位数置信区间方法。n 不足、零方差时保留 SciPy 的 NaN 区间行为。
+`95CI median` validates the current formula used by the platform; this is not equivalent to proving that the interval is the standard method for a median confidence interval. When n is insufficient or the variance is zero, SciPy's NaN interval behavior is retained.
 
-独立结果先按界面 Digits 舍入，再数值比较，默认 `rtol=1e-9`、`atol=1e-10`；置信区间分别比较两个端点，支持负数和科学计数法。分组/时间标识和 n 不使用浮点容差。界面已舍入到两位的小数不能直接与未舍入值按微小浮点容差比较；建议实际审计时将 Digits 提高，例如 8。
+Independent results are first rounded to the UI Digits and then compared numerically, with default `rtol=1e-9` and `atol=1e-10`. Confidence intervals compare the two endpoints separately and support negative numbers and scientific notation. Group/time identifiers and n do not use floating-point tolerance. Values already rounded to two decimal places in the UI cannot be directly compared with unrounded values using a tiny floating-point tolerance; for actual audits, increasing Digits, for example to 8, is recommended.
 
-JSON 报告保留未舍入结果、界面精度结果、观测数据、覆盖情况、依赖版本、差异总数及前 100 项差异。浮点 NaN/Infinity 在报告中表示为文本，确保报告为标准 JSON。行序及重复标识保留，不会按字典键覆盖重复组。
+The JSON report retains unrounded results, UI-precision results, observed data, coverage, dependency versions, the total number of differences, and the first 100 differences. Floating-point NaN/Infinity values are represented as text in the report to ensure it is standard JSON. Row order and duplicate identifiers are preserved; duplicate groups are not overwritten by dictionary keys.
 
-### 随附基准样例
+### Included Baseline Samples
 
 ```bash
 python tests/validate_statistics.py --module PSPV \
@@ -151,8 +151,8 @@ python tests/validate_statistics.py --module PTDV \
   --input tests/fixtures/ptdv_input.csv --observed tests/fixtures/ptdv_summary.csv
 ```
 
-这些 CSV 是已知数列 `[1,2,4,缺失]` 的固定基准，覆盖全部指标。通过它们只说明脚本能匹配已知结果，**不表示用户当前界面已被验证**；真实数据应使用上面的导出文件或实时回调模式。
+These CSV files are fixed baselines for the known sequence `[1,2,4,missing]` and cover all metrics. Passing them only means the scripts can match known results; **it does not mean the user's current UI has been validated**. For real data, use the exported files or live callback mode described above.
 
-## 退出码
+## Exit Codes
 
-两个脚本均使用：`0` = 全部已请求比较通过；`1` = 发现数据差异；`2` = 输入、依赖、接口或执行错误。格式验证中执行错误优先于差异。`tests/results/` 已忽略版本控制，可保存报告和输出文件。
+Both scripts use the following exit codes: `0` = all requested comparisons pass; `1` = data differences found; `2` = input, dependency, interface, or execution error. In conversion validation, execution errors take precedence over differences. `tests/results/` is ignored by version control and can be used to store reports and output files.
