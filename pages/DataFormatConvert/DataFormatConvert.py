@@ -93,18 +93,27 @@ def DataFormatConvert_convert():
         filename = request.values.get("filename")
         convertto = request.values.get('convertto')
          
-    if './' in fileuuid or './' in filename:
-        return
-    
-    filepath = f"{PATH}/upload/{fileuuid}/{filename}"
-    
-    if filename.endswith("csv"):
+    if not fileuuid or not filename:
+        return "invalid request", 400
+    if not is_safe_path_component(fileuuid) or not is_safe_path_component(filename):
+        return "invalid request", 400
+
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in {".csv", ".xls", ".xlsx", ".json"}:
+        return "not valid format", 400
+
+    upload_root = os.path.realpath(os.path.join(PATH, "upload"))
+    filepath = os.path.realpath(os.path.join(upload_root, fileuuid, filename))
+    if not filepath.startswith(upload_root + os.sep):
+        return "invalid request", 400
+
+    if ext == ".csv":
         data = convert_import_csv(filepath)
-    elif filename.endswith("xls"):
+    elif ext == ".xls":
         data = convert_import_xls(filepath)
-    elif filename.endswith("xlsx"):
+    elif ext == ".xlsx":
         data = convert_import_xlsx(filepath)
-    elif filename.endswith("json"):
+    elif ext == ".json":
         data = convert_import_json(filepath)
     else:
         return "not valid format"
@@ -131,7 +140,7 @@ def DataFormatConvert_convert():
     
 
 
-du.configure_upload(app, folder='/www/wwwroot/DataProcessing/upload')
+du.configure_upload(app, folder='/www/wwwroot/server/DataProcessing/upload')
 
     
 def Layout():

@@ -9,6 +9,7 @@ import plotly.graph_objects as go
 from sklearn.cluster import KMeans, AgglomerativeClustering
 import numpy as np
 from fastdtw import fastdtw
+import math
 
 Layout = dbc.Container([
     dcc.Store(id='[PlotsOfData]data_input', storage_type='session'),
@@ -61,11 +62,11 @@ Layout = dbc.Container([
         dbc.Col([
             dbc.Nav(
                 [
-                    dbc.NavLink("Data upload", href="/PlotTwist", active="exact"),
-                    dbc.NavLink("Plot", href="/PlotTwist/Plot", active="exact"),
-                    dbc.NavLink("Clustering", href="/PlotTwist/Clustering", active="exact"),
-                    dbc.NavLink("Data Summary", href="/PlotTwist/DataSummary", active="exact"),
-                    dbc.NavLink("About", href="/PlotTwist/About", active="exact"),
+                    dbc.NavLink("Data upload", href="/PlotsOfData", active="exact"),
+                    dbc.NavLink("Plot", href="/PlotsOfData/Plot", active="exact"),
+                    dbc.NavLink("Clustering", href="/PlotsOfData/Clustering", active="exact"),
+                    dbc.NavLink("Data Summary", href="/PlotsOfData/DataSummary", active="exact"),
+                    dbc.NavLink("About", href="/PlotsOfData/About", active="exact"),
                 ],
                 pills=True, style={"background-color": "#f8f9fa"}
             ),
@@ -110,6 +111,8 @@ def set_plotly(data_file_content_store, data_tiny_store, number_of_clusters, clu
         data_input.columns = ['_'.join( list(map(str, col)) ).replace(' ', '_') for col in data_input.columns.values]
         data_input = data_input.reset_index()
         data_input_is_tiny = False
+    else:
+        data_input.insert(0, 'new_index', range(1, len(data_input)+1)) # 添加序号作为x坐标
         
     y_val_list = []
     column_name = data_input.columns.tolist()
@@ -119,7 +122,10 @@ def set_plotly(data_file_content_store, data_tiny_store, number_of_clusters, clu
     for i in set_xdata(data_input)[1:]:
         y_val_list.append(list(data_input[i]))
 
-    curves = np.array(y_val_list)
+    flat = np.array(y_val_list).flatten()
+    flat = flat[~np.isnan(flat)]
+    
+    curves = np.nan_to_num(np.array(y_val_list))
 
     if clustering_method == 'k-means':
         # 聚类模型的初始化和拟合
@@ -180,9 +186,9 @@ def set_plotly(data_file_content_store, data_tiny_store, number_of_clusters, clu
             name="avg"
         ))
 
-        if data_x_axis and data_x_axis[0] != None and data_x_axis[1] != None:
+        if data_x_axis and data_x_axis[0] != None and data_x_axis[1] != None and (data_x_axis[0] != int(min(x_val_list)) or data_x_axis[1] != math.ceil(max(x_val_list))):
             fig.update_xaxes(range=data_x_axis)
-        if data_y_axis and data_y_axis[0] != None and data_y_axis[1] != None:
+        if data_y_axis and data_y_axis[0] != None and data_y_axis[1] != None and (data_y_axis[0] != int(np.min(flat)) or data_y_axis[1] != math.ceil(np.max(flat))):
             fig.update_yaxes(range=data_y_axis)
 
         # fig.update_layout(height=100)
@@ -196,14 +202,14 @@ def set_plotly(data_file_content_store, data_tiny_store, number_of_clusters, clu
         )
 
     if data_x_axis == None or (data_x_axis[0] == None and data_x_axis[1] == None):
-        data_x_axis = [min(x_val_list), max(x_val_list)]
+        data_x_axis = [int(min(x_val_list)), math.ceil(max(x_val_list))]
     if data_y_axis == None or (data_y_axis[0] == None and data_y_axis[1] == None):
-        data_y_axis = [np.min(y_val_list), np.max(y_val_list)]
+        data_y_axis = [int(np.min(flat)), math.ceil(np.max(flat))]
 
     xy_div = [
         html.Label("Set lower and upper limit of x-axis"),
         dcc.RangeSlider(
-            min(x_val_list), max(x_val_list),
+            int(min(x_val_list)), math.ceil(max(x_val_list)),
             value=data_x_axis,
             id='[PlotsOfData/Clustering]x_axis',
             tooltip={"placement": "bottom", "always_visible": True}
@@ -213,7 +219,7 @@ def set_plotly(data_file_content_store, data_tiny_store, number_of_clusters, clu
 
         html.Label("Set lower and upper limit of y-axis"),
         dcc.RangeSlider(
-            np.min(y_val_list), np.max(y_val_list),
+            int(np.min(flat)), math.ceil(np.max(flat)),
             value=data_y_axis,
             id='[PlotsOfData/Clustering]y_axis',
             tooltip={"placement": "bottom", "always_visible": True}

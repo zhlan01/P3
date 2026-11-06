@@ -50,7 +50,7 @@ Layout = dbc.Container([
                 [
                     dbc.NavLink("Data upload", href="/PlotsOfData", active="exact"),
                     dbc.NavLink("Plot", href="/PlotsOfData/Plot", active="exact"),
-                    dbc.NavLink("Clustering", href="/PlotTwist/Clustering", active="exact"),
+                    dbc.NavLink("Clustering", href="/PlotsOfData/Clustering", active="exact"),
                     dbc.NavLink("Data Summary", href="/PlotsOfData/DataSummary", active="exact"),
                     dbc.NavLink("About", href="/PlotsOfData/About", active="exact"),
                 ],
